@@ -1,0 +1,27 @@
+class ccm_layer(nn.Module):
+    def __init__(self, k_size=[9, 17, 33, 65]):
+        super(ccm_layer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+
+        self.conv0 = nn.Conv1d(1, 1, kernel_size=k_size[0], padding=(k_size[0] - 1) // 2, bias=False)
+        self.conv1 = nn.Conv1d(1, 1, kernel_size=k_size[1], padding=(k_size[1] - 1) // 2, bias=False)
+        self.conv2 = nn.Conv1d(1, 1, kernel_size=k_size[2], padding=(k_size[2] - 1) // 2, bias=False)
+        self.conv3 = nn.Conv1d(1, 1, kernel_size=k_size[3], padding=(k_size[3] - 1) // 2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+        self.line = nn.Linear(4, 1, bias=False)
+    def forward(self, x, k_size):
+        #y = transpose(self.avg_pool(x).squeeze(-1),perm=[0,2,1])
+        y = self.avg_pool(x).squeeze(-1).permute(0,2,1)
+        #y0 = transpose(self.conv0(y), perm=[0,2,1]).unsqueeze(-1)
+        y0 = self.conv0(y).permute(0,2,1).unsqueeze(-1)
+        #y1 = transpose(self.conv1(y), perm=[0,2,1]).unsqueeze(-1)
+        y1 = self.conv1(y).permute(0, 2, 1).unsqueeze(-1)
+        # = transpose(self.conv2(y), perm=[0,2,1]).unsqueeze(-1)
+        y3 = self.conv2(y).permute(0, 2, 1).unsqueeze(-1)
+        #y4 = transpose(self.conv3(y), perm=[0,2,1]).unsqueeze(-1)
+        y4 = self.conv3(y).permute(0, 2, 1).unsqueeze(-1)
+        #y_full = self.line(paddle.concat([y0, y1, y3, y4], axis=2).squeeze(-1).squeeze(-1)).unsqueeze(-1)
+        y_full = self.line(torch.cat([y0,y1,y3,y4],2).squeeze(-1).squeeze(-1)).unsqueeze(-1)
+        y = self.sigmoid(y_full)
+
+        return x * y.expand_as(x)
